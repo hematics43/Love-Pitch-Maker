@@ -2,200 +2,205 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Love Pitch Visualizer – 10 Graphs</title>
+  <title>Love Pitch Tattoo Wave</title>
   <style>
     body {
-      background: linear-gradient(to bottom right, #ffe4ec, #fddde6);
-      color: #b30059;
-      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom right, #ffc6e5, #ffe8f0);
+      color: #c92c6d;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
       text-align: center;
-      padding: 20px;
+      padding: 40px;
     }
-    h1 { font-size: 2.5em; margin-bottom: 10px; }
-    #freq { font-size: 2em; margin: 10px; color: #e60073; }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    #freq {
+      font-size: 2em;
+      margin-top: 10px;
+      color: #ff2d6f;
+      font-weight: bold;
+    }
+
     button {
-      margin: 5px; padding: 10px 20px; background: #ff4da6; 
-      border: none; border-radius: 25px; color: white; 
-      font-size: 1em; cursor: pointer; box-shadow: 0 4px 8px #ff80bf;
+      margin: 10px 5px;
+      padding: 10px 20px;
+      background: #ff69b4;
+      border: none;
+      border-radius: 20px;
+      color: white;
+      font-size: 1.2em;
+      cursor: pointer;
+      box-shadow: 0 0 10px #ff69b4;
     }
-    .canvas {
-      border: 2px solid #ff99cc; border-radius: 10px; 
-      background: #fff0f5; margin: 10px auto; display: block;
+
+    #saved {
+      margin-top: 25px;
     }
+
+    #saved h2 {
+      font-size: 1.5em;
+    }
+
     #savedList {
-      max-height: 120px; overflow-y: auto; padding: 10px; 
-      border: 2px dashed #ff66a3; background: #fff0f5; 
-      font-size: 1.1em; margin: 10px auto; width: 90%;
+      max-height: 150px;
+      overflow-y: auto;
+      padding: 10px;
+      border: 2px dashed #ff99cc;
+      border-radius: 10px;
+      background: #fff0f6;
+      font-size: 1.1em;
     }
-    input[type="text"] {
-      padding: 10px; font-size: 1em; border-radius: 8px; 
-      border: 1px solid #ff66a3; width: 220px;
+
+    canvas {
+      border: 2px solid #ff69b4;
+      border-radius: 15px;
+      box-shadow: 0 0 15px #ff8dc7;
+      background-color: #fff0f6;
+      margin-top: 20px;
+    }
+
+    .tattoo-hint {
+      margin-top: 10px;
+      font-style: italic;
+      font-size: 0.9em;
+      color: #aa2c5f;
     }
   </style>
 </head>
 <body>
-  <h1>💕 Love Pitch Visualizer 💕</h1>
+  <h1>💕 Love Pitch Tattoo Wave 💕</h1>
+  <p>Speak your love. Save your sound. Wear your wave. 🎙️💘</p>
   <div id="freq">Waiting for love...</div>
-  <button onclick="savePitch()">📂 Save Pitch</button>
-  <button onclick="saveWaveform()">🖼️ Save Waveform</button>
-  <input type="text" id="ttfText" placeholder="Enter text…" />
-  <button onclick="textToFreq()">🔐 Text → Graph</button>
-  <div id="savedList">Saved Frequencies: None</div>
 
-  <!-- 10 Canvas Graphs -->
-  <canvas id="c1" class="canvas" width="600" height="120"></canvas>
-  <canvas id="c2" class="canvas" width="600" height="120"></canvas>
-  <canvas id="c3" class="canvas" width="600" height="120"></canvas>
-  <canvas id="c4" class="canvas" width="600" height="120"></canvas>
-  <canvas id="c5" class="canvas" width="600" height="120"></canvas>
-  <canvas id="c6" class="canvas" width="600" height="120"></canvas>
-  <canvas id="c7" class="canvas" width="600" height="120"></canvas>
-  <canvas id="c8" class="canvas" width="600" height="120"></canvas>
-  <canvas id="c9" class="canvas" width="600" height="120"></canvas>
-  <canvas id="c10" class="canvas" width="600" height="120"></canvas>
+  <button onclick="savePitch()">💾 Save Pitch</button>
+  <button onclick="saveGraph()">🖼️ Save Graph as Image</button>
 
-<script>
-let audioCtx, source, analyserWF, analyserSpec, dataWF, dataSpec;
-let latestFreq = -1, saved = [], noteCounts = {};
+  <div id="saved">
+    <h2>Saved Frequencies 💘</h2>
+    <div id="savedList">None yet...</div>
+  </div>
 
-function savePitch() {
-  if (latestFreq > 0) {
-    saved.push(latestFreq.toFixed(2));
-    const note = freqToNote(latestFreq);
-    noteCounts[note] = (noteCounts[note] || 0) + 1;
-    updateSavedList(); drawGraph3(); drawGraph9();
-  }
-}
-function saveWaveform() {
-  const a = document.createElement('a');
-  a.download = `wave_${Date.now()}.png`;
-  a.href = document.getElementById('c1').toDataURL();
-  a.click();
-}
-function updateSavedList() {
-  document.getElementById('savedList').innerHTML = saved.length ?
-    saved.map(f => `${f} Hz (${freqToNote(parseFloat(f))})`).join('<br>') : 'None';
-}
-function freqToNote(freq) {
-  const A4 = 440, notes = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
-  const n = Math.round(12 * Math.log2(freq / A4)) + 69;
-  const note = notes[(n % 12 + 12) % 12], octave = Math.floor(n / 12) - 1;
-  return note + octave;
-}
+  <canvas id="visualizer" width="600" height="150"></canvas>
+  <div class="tattoo-hint">🖤 Save the waveform above as a tattoo design</div>
 
-async function startAudio() {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  audioCtx = new (window.AudioContext || webkitAudioContext)();
-  source = audioCtx.createMediaStreamSource(stream);
+  <script>
+    let latestFreq = -1;
+    const savedFrequencies = [];
 
-  analyserWF = audioCtx.createAnalyser(); analyserWF.fftSize = 1024;
-  analyserSpec = audioCtx.createAnalyser(); analyserSpec.fftSize = 256;
-  source.connect(analyserWF); source.connect(analyserSpec);
-  dataWF = new Float32Array(analyserWF.fftSize);
-  dataSpec = new Uint8Array(analyserSpec.frequencyBinCount);
+    function savePitch() {
+      if (latestFreq !== -1) {
+        savedFrequencies.push(latestFreq.toFixed(2));
+        updateSavedList();
+      }
+    }
 
-  requestAnimationFrame(update);
-}
-function drawGraph1() {
-  analyserWF.getFloatTimeDomainData(dataWF);
-  const c = document.getElementById('c1'), ctx = c.getContext('2d');
-  ctx.clearRect(0, 0, c.width, c.height);
-  ctx.beginPath(); ctx.strokeStyle = "#e60073"; ctx.lineWidth = 1.5;
-  let x = 0, slice = c.width / dataWF.length;
-  dataWF.forEach((v, i) => {
-    const y = (v * 0.5 + 0.5) * c.height;
-    i == 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    x += slice;
-  }); ctx.stroke();
-}
-function drawGraph2() {
-  analyserSpec.getByteFrequencyData(dataSpec);
-  const c = document.getElementById('c2'), ctx = c.getContext('2d');
-  ctx.clearRect(0, 0, c.width, c.height);
-  dataSpec.forEach((v, i) => {
-    ctx.fillStyle = `hsl(${i * 4}, 100%, 75%)`;
-    const h = v * c.height / 255;
-    ctx.fillRect(i * (c.width / dataSpec.length), c.height - h, (c.width / dataSpec.length) - 1, h);
-  });
-}
-function drawGraph3() {
-  const c = document.getElementById('c3'), ctx = c.getContext('2d');
-  ctx.clearRect(0, 0, c.width, c.height);
-  if (saved.length < 2) return;
-  ctx.beginPath(); ctx.strokeStyle = "#cc0066"; ctx.lineWidth = 2;
-  saved.forEach((f, i) => {
-    const x = i * (c.width / (saved.length - 1));
-    const y = c.height - (f / 1000) * c.height;
-    i == 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  }); ctx.stroke();
-}
-function drawGraph4() {
-  const c = document.getElementById('c4'), ctx = c.getContext('2d');
-  ctx.clearRect(0, 0, c.width, c.height);
-  const notes = Object.keys(noteCounts), total = saved.length;
-  notes.forEach((n, i) => {
-    const h = noteCounts[n] / total * c.height;
-    ctx.fillStyle = "#ff66b2";
-    ctx.fillRect(i * (c.width / notes.length), c.height - h, (c.width / notes.length) - 1, h);
-    ctx.fillStyle = "#cc0066"; ctx.fillText(n, i * (c.width / notes.length) + 4, c.height - 5);
-  });
-}
-function drawGraph5() {
-  const c = document.getElementById('c5'), ctx = c.getContext('2d');
-  ctx.clearRect(0, 0, c.width, c.height);
-  ctx.strokeStyle = '#ff3399';
-  ctx.beginPath(); ctx.moveTo(0, c.height/2);
-  ctx.lineTo(c.width, c.height/2); ctx.stroke();
-}
-function drawGraph6(){ drawGraph1(); }
-function drawGraph7(){ drawGraph2(); }
-function drawGraph8(){ drawGraph3(); }
-function drawGraph9(){ drawGraph4(); }
-function drawGraph10(){
-  const c=document.getElementById('c10'), ctx=c.getContext('2d');
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.fillStyle="#cc0066";
-  ctx.font="16px sans-serif";
-  ctx.fillText(`Saved: ${saved.length}`,10,20);
-  if(latestFreq>0) ctx.fillText(`Last: ${latestFreq.toFixed(2)} Hz`,10,40);
-}
+    function updateSavedList() {
+      const listDiv = document.getElementById("savedList");
+      if (savedFrequencies.length === 0) {
+        listDiv.innerHTML = "None yet...";
+        return;
+      }
+      listDiv.innerHTML = savedFrequencies
+        .map(freq => `💘 ${freq} Hz`)
+        .join("<br>");
+    }
 
-function update() {
-  analyserWF.getFloatTimeDomainData(dataWF);
-  const freq = autocorr(dataWF, audioCtx.sampleRate);
-  latestFreq = freq > 0 ? freq : -1;
-  document.getElementById('freq').textContent = latestFreq > 0 ? `❤️ ${latestFreq.toFixed(2)} Hz (${freqToNote(latestFreq)})` : 'Waiting for love...';
-  drawGraph1(); drawGraph2(); drawGraph5(); drawGraph10();
-  requestAnimationFrame(update);
-}
-function autocorr(buf, sr) {
-  let SIZE = buf.length, MAX = SIZE / 2, bestOff = -1, bestCorr = 0, rms = 0;
-  for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
-  rms = Math.sqrt(rms / SIZE);
-  if (rms < 0.01) return -1;
-  let lastCorr = 1;
-  for (let off = 0; off < MAX; off++) {
-    let corr = 0;
-    for (let i = 0; i < MAX; i++) corr += Math.abs(buf[i] - buf[i + off]);
-    corr = 1 - (corr / MAX);
-    if (corr > 0.9 && corr > lastCorr) { bestCorr = corr; bestOff = off; }
-    lastCorr = corr;
-  }
-  return bestCorr > 0.01 ? sr / bestOff : -1;
-}
-function textToFreq() {
-  const text = document.getElementById('ttfText').value;
-  saved.length = 0; for (let k in noteCounts) delete noteCounts[k];
-  text.split('').forEach(ch => {
-    const code = ch.charCodeAt(0);
-    const f = 220 + (code % 100) * 3;
-    saved.push(f);
-    const n = freqToNote(f); noteCounts[n] = (noteCounts[n] || 0) + 1;
-  });
-  updateSavedList(); drawGraph3(); drawGraph4(); drawGraph10();
-}
+    function saveGraph() {
+      const canvas = document.getElementById("visualizer");
+      const link = document.createElement("a");
+      link.download = `love_wave_${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    }
 
-startAudio().catch(() => alert('Mic blocked or unsupported'));
-</script>
+    async function startAudio() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      const bufferLength = analyser.fftSize;
+      const data = new Float32Array(bufferLength);
+
+      source.connect(analyser);
+
+      const canvas = document.getElementById("visualizer");
+      const ctx = canvas.getContext("2d");
+
+      function drawWaveform() {
+        analyser.getFloatTimeDomainData(data);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.beginPath();
+        ctx.strokeStyle = "#000"; // tattoo-friendly black waveform
+        ctx.lineWidth = 2;
+
+        const sliceWidth = canvas.width / bufferLength;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+          const v = data[i] * 0.5 + 0.5;
+          const y = v * canvas.height;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          x += sliceWidth;
+        }
+        ctx.stroke();
+        requestAnimationFrame(drawWaveform);
+      }
+
+      function autoCorrelate(buffer, sampleRate) {
+        let SIZE = buffer.length;
+        let MAX_SAMPLES = Math.floor(SIZE / 2);
+        let bestOffset = -1;
+        let bestCorrelation = 0;
+        let rms = 0;
+
+        for (let i = 0; i < SIZE; i++) {
+          const val = buffer[i];
+          rms += val * val;
+        }
+        rms = Math.sqrt(rms / SIZE);
+        if (rms < 0.01) return -1;
+
+        let lastCorrelation = 1;
+        for (let offset = 0; offset < MAX_SAMPLES; offset++) {
+          let correlation = 0;
+          for (let i = 0; i < MAX_SAMPLES; i++) {
+            correlation += Math.abs((buffer[i]) - (buffer[i + offset]));
+          }
+          correlation = 1 - (correlation / MAX_SAMPLES);
+          if (correlation > 0.9 && correlation > lastCorrelation) {
+            bestCorrelation = correlation;
+            bestOffset = offset;
+          }
+          lastCorrelation = correlation;
+        }
+
+        if (bestCorrelation > 0.01) {
+          return sampleRate / bestOffset;
+        }
+        return -1;
+      }
+
+      function updateFreq() {
+        analyser.getFloatTimeDomainData(data);
+        const freq = autoCorrelate(data, audioCtx.sampleRate);
+        latestFreq = freq;
+        document.getElementById("freq").textContent =
+          freq !== -1 ? `❤️ ${freq.toFixed(2)} Hz` : "Waiting for love...";
+        requestAnimationFrame(updateFreq);
+      }
+
+      drawWaveform();
+      updateFreq();
+    }
+
+    startAudio().catch(err => {
+      alert("Microphone access denied or not supported.");
+    });
+  </script>
 </body>
 </html>
