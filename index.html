@@ -1,30 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Love Pitch Recorder</title>
+  <meta charset="UTF-8" />
+  <title>Love Pitch Recorder with Graphs</title>
   <style>
     body {
       background: linear-gradient(to bottom right, #ffc6e5, #ffe8f0);
       color: #c92c6d;
-      font-family: 'Comic Sans MS', cursive, sans-serif;
+      font-family: 'Comic Sans MS', cursive;
       text-align: center;
       padding: 40px;
     }
 
     h1 {
       font-size: 2.5em;
-      margin-bottom: 10px;
     }
 
     #freq {
       font-size: 2em;
-      margin-top: 10px;
-      color: #ff2d6f;
+      margin: 20px 0;
       font-weight: bold;
+      color: #ff2d6f;
     }
 
     button {
-      margin-top: 20px;
+      margin: 10px;
       padding: 10px 20px;
       background: #ff69b4;
       border: none;
@@ -36,13 +36,7 @@
     }
 
     #saved {
-      margin-top: 25px;
-      text-align: center;
-    }
-
-    #saved h2 {
-      font-size: 1.5em;
-      margin-bottom: 10px;
+      margin-top: 30px;
     }
 
     #savedList {
@@ -53,14 +47,15 @@
       border-radius: 10px;
       background: #fff0f6;
       font-size: 1.1em;
+      margin-bottom: 30px;
     }
 
     canvas {
       border: 2px solid #ff69b4;
       border-radius: 15px;
+      background: #fff0f6;
       box-shadow: 0 0 15px #ff8dc7;
-      background-color: #fff0f6;
-      margin-top: 20px;
+      margin: 20px 0;
     }
   </style>
 </head>
@@ -70,14 +65,16 @@
   <div id="freq">Waiting for love...</div>
 
   <button onclick="savePitch()">💾 Save Pitch</button>
-  <button onclick="saveGraph()">🖼️ Save Graph as Image</button>
+  <button onclick="saveGraph()">🖼️ Save Waveform</button>
 
   <div id="saved">
     <h2>Saved Frequencies 💘</h2>
     <div id="savedList">None yet...</div>
   </div>
 
-  <canvas id="visualizer" width="600" height="200"></canvas>
+  <canvas id="waveformCanvas" width="600" height="150"></canvas>
+  <canvas id="spectrumCanvas" width="600" height="150"></canvas>
+  <canvas id="pitchGraph" width="600" height="150"></canvas>
 
   <script>
     let latestFreq = -1;
@@ -87,7 +84,16 @@
       if (latestFreq !== -1) {
         savedFrequencies.push(latestFreq.toFixed(2));
         updateSavedList();
+        updatePitchGraph();
       }
+    }
+
+    function saveGraph() {
+      const canvas = document.getElementById("waveformCanvas");
+      const link = document.createElement("a");
+      link.download = `love_waveform_${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
     }
 
     function updateSavedList() {
@@ -96,53 +102,34 @@
         listDiv.innerHTML = "None yet...";
         return;
       }
-      listDiv.innerHTML = savedFrequencies
-        .map(freq => `💘 ${freq} Hz`)
-        .join("<br>");
-    }
-
-    function saveGraph() {
-      const canvas = document.getElementById("visualizer");
-      const link = document.createElement("a");
-      link.download = `love_pitch_graph_${Date.now()}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      listDiv.innerHTML = savedFrequencies.map(f => `💘 ${f} Hz`).join("<br>");
     }
 
     async function startAudio() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioCtx.createMediaStreamSource(stream);
+
+      // Waveform Analyser
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 2048;
-      const bufferLength = analyser.fftSize;
-      const data = new Float32Array(bufferLength);
-
+      const waveformData = new Float32Array(analyser.fftSize);
       source.connect(analyser);
 
-      const canvas = document.getElementById("visualizer");
-      const ctx = canvas.getContext("2d");
+      // Spectrum Analyser
+      const spectrumAnalyser = audioCtx.createAnalyser();
+      spectrumAnalyser.fftSize = 256;
+      const spectrumData = new Uint8Array(spectrumAnalyser.frequencyBinCount);
+      source.connect(spectrumAnalyser);
 
-      function drawWaveform() {
-        analyser.getFloatTimeDomainData(data);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.beginPath();
-        ctx.strokeStyle = "#ff2d6f";
-        ctx.lineWidth = 3;
+      const waveformCanvas = document.getElementById("waveformCanvas");
+      const waveformCtx = waveformCanvas.getContext("2d");
 
-        const sliceWidth = canvas.width / bufferLength;
-        let x = 0;
+      const spectrumCanvas = document.getElementById("spectrumCanvas");
+      const spectrumCtx = spectrumCanvas.getContext("2d");
 
-        for (let i = 0; i < bufferLength; i++) {
-          const v = data[i] * 0.5 + 0.5;
-          const y = v * canvas.height;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-          x += sliceWidth;
-        }
-        ctx.stroke();
-        requestAnimationFrame(drawWaveform);
-      }
+      const pitchCanvas = document.getElementById("pitchGraph");
+      const pitchCtx = pitchCanvas.getContext("2d");
 
       function autoCorrelate(buffer, sampleRate) {
         let SIZE = buffer.length;
@@ -151,10 +138,7 @@
         let bestCorrelation = 0;
         let rms = 0;
 
-        for (let i = 0; i < SIZE; i++) {
-          const val = buffer[i];
-          rms += val * val;
-        }
+        for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
         rms = Math.sqrt(rms / SIZE);
         if (rms < 0.01) return -1;
 
@@ -162,7 +146,7 @@
         for (let offset = 0; offset < MAX_SAMPLES; offset++) {
           let correlation = 0;
           for (let i = 0; i < MAX_SAMPLES; i++) {
-            correlation += Math.abs((buffer[i]) - (buffer[i + offset]));
+            correlation += Math.abs(buffer[i] - buffer[i + offset]);
           }
           correlation = 1 - (correlation / MAX_SAMPLES);
           if (correlation > 0.9 && correlation > lastCorrelation) {
@@ -172,28 +156,78 @@
           lastCorrelation = correlation;
         }
 
-        if (bestCorrelation > 0.01) {
-          return sampleRate / bestOffset;
-        }
-        return -1;
+        return bestCorrelation > 0.01 ? sampleRate / bestOffset : -1;
       }
 
-      function updateFreq() {
-        analyser.getFloatTimeDomainData(data);
-        const freq = autoCorrelate(data, audioCtx.sampleRate);
+      function drawWaveform() {
+        analyser.getFloatTimeDomainData(waveformData);
+        waveformCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+        waveformCtx.beginPath();
+        waveformCtx.lineWidth = 2;
+        waveformCtx.strokeStyle = "#ff2d6f";
+
+        const sliceWidth = waveformCanvas.width / waveformData.length;
+        let x = 0;
+        for (let i = 0; i < waveformData.length; i++) {
+          const v = waveformData[i] * 0.5 + 0.5;
+          const y = v * waveformCanvas.height;
+          if (i === 0) waveformCtx.moveTo(x, y);
+          else waveformCtx.lineTo(x, y);
+          x += sliceWidth;
+        }
+        waveformCtx.stroke();
+      }
+
+      function drawSpectrum() {
+        spectrumAnalyser.getByteFrequencyData(spectrumData);
+        spectrumCtx.clearRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
+
+        const barWidth = (spectrumCanvas.width / spectrumData.length) * 1.5;
+        let x = 0;
+
+        for (let i = 0; i < spectrumData.length; i++) {
+          const barHeight = spectrumData[i];
+          spectrumCtx.fillStyle = `hsl(${i * 5}, 100%, 70%)`;
+          spectrumCtx.fillRect(x, spectrumCanvas.height - barHeight, barWidth, barHeight);
+          x += barWidth + 1;
+        }
+      }
+
+      function updatePitchGraph() {
+        pitchCtx.clearRect(0, 0, pitchCanvas.width, pitchCanvas.height);
+        if (savedFrequencies.length < 2) return;
+
+        pitchCtx.beginPath();
+        pitchCtx.strokeStyle = "#c92c6d";
+        pitchCtx.lineWidth = 2;
+
+        const step = pitchCanvas.width / (savedFrequencies.length - 1);
+        for (let i = 0; i < savedFrequencies.length; i++) {
+          const x = i * step;
+          const y = pitchCanvas.height - (savedFrequencies[i] / 1000) * pitchCanvas.height;
+          if (i === 0) pitchCtx.moveTo(x, y);
+          else pitchCtx.lineTo(x, y);
+        }
+        pitchCtx.stroke();
+      }
+
+      function update() {
+        analyser.getFloatTimeDomainData(waveformData);
+        const freq = autoCorrelate(waveformData, audioCtx.sampleRate);
         latestFreq = freq;
         document.getElementById("freq").textContent =
           freq !== -1 ? `❤️ ${freq.toFixed(2)} Hz` : "Waiting for love...";
-        requestAnimationFrame(updateFreq);
+
+        drawWaveform();
+        drawSpectrum();
+
+        requestAnimationFrame(update);
       }
 
-      drawWaveform();
-      updateFreq();
+      update();
     }
 
-    startAudio().catch(err => {
-      alert("Microphone access denied or not supported.");
-    });
+    startAudio().catch(() => alert("Microphone access denied or not supported."));
   </script>
 </body>
 </html>
