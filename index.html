@@ -70,6 +70,7 @@
   <div id="freq">Waiting for love...</div>
 
   <button onclick="savePitch()">💾 Save Pitch</button>
+  <button onclick="saveGraph()">🖼️ Save Graph as Image</button>
 
   <div id="saved">
     <h2>Saved Frequencies 💘</h2>
@@ -98,6 +99,14 @@
       listDiv.innerHTML = savedFrequencies
         .map(freq => `💘 ${freq} Hz`)
         .join("<br>");
+    }
+
+    function saveGraph() {
+      const canvas = document.getElementById("visualizer");
+      const link = document.createElement("a");
+      link.download = `love_pitch_graph_${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
     }
 
     async function startAudio() {
